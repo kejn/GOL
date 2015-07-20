@@ -107,7 +107,7 @@ public class GameBoard {
 
 		if (cell.isAlive() && (alive < 2 || alive > 3)) {
 			setCellState(coord, CellState.DEAD, true);
-		} else if (alive == 3) {
+		} else if (!cell.isAlive() && alive == 3) {
 			setCellState(coord, CellState.ALIVE, true);
 		}
 	}

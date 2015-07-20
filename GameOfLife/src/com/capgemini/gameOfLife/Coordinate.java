@@ -27,11 +27,17 @@ public class Coordinate {
 		x = newPosition.getX();
 		y = newPosition.getY();
 	}
-
+	
+	/**
+	 * @return Horizontal position.
+	 */
 	public Integer getX() {
 		return x;
 	}
 
+	/**
+	 * @return Vertical position.
+	 */
 	public Integer getY() {
 		return y;
 	}
