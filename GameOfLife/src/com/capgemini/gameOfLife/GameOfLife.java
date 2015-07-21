@@ -22,12 +22,13 @@ import org.eclipse.swt.widgets.Monitor;
 import org.eclipse.swt.widgets.Shell;
 
 public class GameOfLife extends GameBoard {
-	protected static final int refreshTimeMs = 50;
+	private static final int refreshTimeMs = 100;
 	private final String shellTitle;
 	private final int _20PercentOfGameBoard;
-	private static Display display = new Display();
+
+	static Display display = new Display();
+	static Monitor primaryMonitor = display.getPrimaryMonitor();
 	private static Shell shell = new Shell(display);
-	private static Monitor primaryMonitor = display.getPrimaryMonitor();
 
 	private Shell dialogShell;
 
@@ -61,7 +62,7 @@ public class GameOfLife extends GameBoard {
 	}
 
 	private void initializeCellArea() {
-		cellArea = new Composite(shell, SWT.BORDER | SWT.FILL);
+		cellArea = new Composite(shell, SWT.NONE);// SWT.BORDER | SWT.FILL);
 		cellLayout = new GridLayout(DIMENSIONS.getY(), true);
 		cellLayout.horizontalSpacing = 0;
 		cellLayout.verticalSpacing = 0;
@@ -94,6 +95,7 @@ public class GameOfLife extends GameBoard {
 	@Override
 	public void nextGeneration() {
 		super.nextGeneration();
+		
 		for (Map.Entry<Coordinate, Cell> entry : cellMap.entrySet()) {
 			Coordinate coord = entry.getKey();
 			Cell cell = entry.getValue();
@@ -175,7 +177,7 @@ public class GameOfLife extends GameBoard {
 		separator.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 	}
 
-	private void start() {
+	void start() {
 		centerShell();
 		showLoadingShell();
 		openShell();
@@ -186,17 +188,17 @@ public class GameOfLife extends GameBoard {
 		}
 		display.dispose();
 	}
-	
+
 	private void centerShell() {
 		shell.pack();
 		shell.setMinimumSize(shell.getSize());
-		
+
 		Rectangle bounds = primaryMonitor.getBounds();
 		Rectangle rect = shell.getBounds();
-		
+
 		int x = bounds.x + (bounds.width - rect.width) / 2;
 		int y = bounds.y + (bounds.height - rect.height) / 2;
-		
+
 		shell.setLocation(x, y);
 	}
 
@@ -223,9 +225,16 @@ public class GameOfLife extends GameBoard {
 		shell.open();
 		dialogShell.dispose();
 	}
-
+	
+	public static boolean CANCELLED = false;
+	public static Coordinate USER_COORDINATES;
+	
 	public static void main(String[] args) {
-		GameOfLife gol = new GameOfLife(new Coordinate(40, 60));
+		AskShell.display();
+		if (GameOfLife.CANCELLED) {
+			return;
+		}
+		GameOfLife gol = new GameOfLife(USER_COORDINATES);
 		gol.start();
 	}
 
