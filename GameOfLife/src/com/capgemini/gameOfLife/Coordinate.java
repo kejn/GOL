@@ -27,7 +27,7 @@ public class Coordinate {
 		x = newPosition.getX();
 		y = newPosition.getY();
 	}
-	
+
 	/**
 	 * @return Horizontal position.
 	 */
@@ -49,6 +49,12 @@ public class Coordinate {
 	 */
 	public static void setUpperLimit(Coordinate another) {
 		upperLimit = new Coordinate(another);
+	}
+
+	public static Coordinate random() {
+		int x = (int) (Math.random() * upperLimit.getX());
+		int y = (int) (Math.random() * upperLimit.getY());
+		return new Coordinate(x, y);
 	}
 
 	/**

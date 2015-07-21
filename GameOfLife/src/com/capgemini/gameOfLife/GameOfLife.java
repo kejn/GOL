@@ -4,24 +4,32 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.MouseEvent;
-import org.eclipse.swt.events.MouseListener;
-import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.graphics.RGB;
+import org.eclipse.swt.graphics.Device;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.Monitor;
 import org.eclipse.swt.widgets.Shell;
 
 public class GameOfLife extends GameBoard {
+	protected static final int refreshTimeMs = 50;
 	private final String shellTitle;
-	private final Color colorAlive;
-	private Display display;
-	private Shell shell;
+	private final int _20PercentOfGameBoard;
+	private static Display display = new Display();
+	private static Shell shell = new Shell(display);
+	private static Monitor primaryMonitor = display.getPrimaryMonitor();
+
+	private Shell dialogShell;
 
 	private GridLayout shellLayout;
 	private RowLayout navLayout;
@@ -30,60 +38,55 @@ public class GameOfLife extends GameBoard {
 	private Composite navBar;
 	private Composite cellArea;
 
-	private Button bRandRevive;
-	private Button bRandKill;
+	private Button bRandom;
 	private Button bNext;
-	
+	private Button bLoop;
+
 	private Label separator;
-	
-	private Map<Coordinate, Label> cellLabelMap;
+
+	private Map<Coordinate, CellLabel> cellLabelMap;
+
+	public static Device getDisplay() {
+		return display;
+	}
 
 	public GameOfLife(Coordinate newDimensions) {
 		super(newDimensions);
+		_20PercentOfGameBoard = DIMENSIONS.getX() * DIMENSIONS.getY() / 5;
 		shellTitle = "Game of Life";
 		initializeDisplayAndShell();
 		initializeNavBar();
 		addHorizontalSeparator();
-		colorAlive = new Color(display, new RGB(0,200,100));
 		initializeCellArea();
 	}
 
 	private void initializeCellArea() {
 		cellArea = new Composite(shell, SWT.BORDER | SWT.FILL);
-		cellLayout = new GridLayout(DIMENSIONS.getX(), true);
+		cellLayout = new GridLayout(DIMENSIONS.getY(), true);
 		cellLayout.horizontalSpacing = 0;
 		cellLayout.verticalSpacing = 0;
-		cellLabelMap = new HashMap<Coordinate, Label>();
-		for (final Map.Entry<Coordinate, Cell> entry : cellMap.entrySet()) {
-			Label label = new Label(cellArea, SWT.BORDER);
-			label.setText("     ");
-			label.setBackground(new Color(display, new RGB(0,0,0)));
-			label.addMouseListener(new MouseListener() {
-				
-				@Override
-				public void mouseUp(MouseEvent arg0) {
-				}
-				
-				@Override
-				public void mouseDown(MouseEvent arg0) {
-					Label label = (Label) arg0.getSource();
-					Cell cell = entry.getValue();
-					Coordinate coord = entry.getKey();
-					if(cell.isAlive()) {
-						setCellState(coord, CellState.DEAD, false);
-						label.setBackground(null);
-					} else {
-						setCellState(coord, CellState.ALIVE, false);
-						label.setBackground(colorAlive);
+		cellLabelMap = new HashMap<Coordinate, CellLabel>();
+		for (int i = 0; i < DIMENSIONS.getX(); i++) {
+			for (int j = 0; j < DIMENSIONS.getY(); j++) {
+				Coordinate coord = new Coordinate(i, j);
+				final CellLabel label = new CellLabel(cellArea, SWT.BORDER, coord);
+				label.addListener(SWT.MouseDown, new Listener() {
+					@Override
+					public void handleEvent(Event e) {
+						Coordinate coord = label.getPosition();
+						Cell cell = cellMap.get(coord);
+						if (cell.isAlive()) {
+							setCellState(coord, CellState.DEAD, false);
+							label.setBackground(CellLabel.colorDead());
+						} else {
+							setCellState(coord, CellState.ALIVE, false);
+							label.setBackground(CellLabel.colorAlive());
+						}
+						cellLabelMap.put(coord, label);
 					}
-					cellLabelMap.put(coord, label);
-				}
-				
-				@Override
-				public void mouseDoubleClick(MouseEvent arg0) {
-				}
-			});
-			cellLabelMap.put(entry.getKey(), label);
+				});
+				cellLabelMap.put(label.getPosition(), label);
+			}
 		}
 		cellArea.setLayout(cellLayout);
 	}
@@ -94,20 +97,17 @@ public class GameOfLife extends GameBoard {
 		for (Map.Entry<Coordinate, Cell> entry : cellMap.entrySet()) {
 			Coordinate coord = entry.getKey();
 			Cell cell = entry.getValue();
-			Label label = cellLabelMap.get(coord);
+			CellLabel label = cellLabelMap.get(coord);
 			if (cell.isAlive()) {
-				label.setBackground(colorAlive);
+				label.setBackground(CellLabel.colorAlive());
 			} else {
-				label.setBackground(new Color(display, new RGB(0,0,0)));
+				label.setBackground(CellLabel.colorDead());
 			}
 		}
 	}
-	
-	private void initializeDisplayAndShell() {
-		display = new Display();
-		shell = new Shell(display);
-		shellLayout = new GridLayout(1, true);
 
+	private void initializeDisplayAndShell() {
+		shellLayout = new GridLayout(1, true);
 		shell.setText(shellTitle);
 		shell.setLayout(shellLayout);
 	}
@@ -119,40 +119,66 @@ public class GameOfLife extends GameBoard {
 		navLayout.pack = false;
 		navBar.setLayout(navLayout);
 
-		bRandRevive = new Button(navBar, SWT.PUSH);
-		bRandRevive.setText("Random revive");
-
-		bRandKill = new Button(navBar, SWT.PUSH);
-		bRandKill.setText("Random kill");
-		
-		bNext = new Button(navBar, SWT.PUSH);
-		bNext.setText("Next generation");
-		bNext.addMouseListener(new MouseListener() {
-			
+		bRandom = new Button(navBar, SWT.PUSH);
+		bRandom.setText(_20PercentOfGameBoard + " random clicks");
+		bRandom.addListener(SWT.Selection, new Listener() {
 			@Override
-			public void mouseUp(MouseEvent arg0) {
-			}
-			
-			@Override
-			public void mouseDown(MouseEvent arg0) {
-				nextGeneration();
-			}
-			
-			@Override
-			public void mouseDoubleClick(MouseEvent arg0) {
+			public void handleEvent(Event e) {
+				random20PercentOfGameBoardClicks();
 			}
 		});
+
+		bNext = new Button(navBar, SWT.PUSH);
+		bNext.setText("Next generation");
+		bNext.addListener(SWT.Selection, new Listener() {
+			@Override
+			public void handleEvent(Event e) {
+				nextGeneration();
+			}
+		});
+
+		bLoop = new Button(navBar, SWT.PUSH);
+		bLoop.setText("Start loop");
+		final Runnable loopNextGeneration = new Runnable() {
+			@Override
+			public void run() {
+				if (shell.isDisposed()) {
+					return;
+				}
+				nextGeneration();
+				display.timerExec(refreshTimeMs, this);
+			}
+		};
+		bLoop.addListener(SWT.Selection, new Listener() {
+			@Override
+			public void handleEvent(Event e) {
+				if (bLoop.getText().equals("Start loop")) {
+					bLoop.setText("Stop loop");
+					display.timerExec(100, loopNextGeneration);
+				} else {
+					bLoop.setText("Start loop");
+					display.timerExec(-1, loopNextGeneration);
+				}
+			}
+		});
+	}
+
+	private void random20PercentOfGameBoardClicks() {
+		int cellsToRevive = _20PercentOfGameBoard;
+		while (cellsToRevive-- > 0) {
+			cellLabelMap.get(Coordinate.random()).getLabel().notifyListeners(SWT.MouseDown, null);
+		}
 	}
 
 	private void addHorizontalSeparator() {
 		separator = new Label(shell, SWT.SEPARATOR | SWT.HORIZONTAL);
 		separator.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 	}
-	
-	private void startEventLoop() {
-		shell.pack();
-		shell.setMinimumSize(shell.getSize());
-		shell.open();
+
+	private void start() {
+		centerShell();
+		showLoadingShell();
+		openShell();
 		while (!shell.isDisposed()) {
 			if (!display.readAndDispatch()) {
 				display.sleep();
@@ -160,81 +186,47 @@ public class GameOfLife extends GameBoard {
 		}
 		display.dispose();
 	}
-
 	
-	
-	public static void main(String[] args) {
-		GameOfLife gol = new GameOfLife(new Coordinate(6, 3));
-		gol.startEventLoop();
-
-//		Composite cellArea = new Composite(shell, SWT.BORDER | SWT.FILL);
-//		GridLayout cellLayout = new GridLayout(4, true);
-//		cellArea.setLayout(cellLayout);
-//		Label cellLabel;
-//		for (int i = 0; i < 4; i++) {
-//			for (int j = 0; j < 4; j++) {
-//				cellLabel = new Label(cellArea, SWT.BORDER);
-//				cellLabel.setText("     ");
-//				// cellLabel.setBackground(new Color(display, new
-//				// RGB(0,200,100)));
-//			}
-//		}
-
-		// label = new Label(shell, SWT.BORDER);
-		// label.setText("This is a label");
-		// GridData data = new GridData(SWT.FILL, SWT.TOP, true, false, 2, 1);
-		// label.setLayoutData(data);
-		//
-		// label = new Label(shell, SWT.SEPARATOR | SWT.HORIZONTAL);
-		//
-		// data = new GridData(SWT.FILL, SWT.TOP, true, false);
-		// data.horizontalSpan = 2;
-		// label.setLayoutData(data);
-		//
-		// Button b = new Button(shell, SWT.PUSH);
-		// b.setText("New Button");
-		//
-		// data = new GridData(SWT.LEFT, SWT.TOP, false, false, 2, 1);
-		// b.setLayoutData(data);
-		//
-		// Spinner spinner = new Spinner(shell, SWT.READ_ONLY);
-		// spinner.setMinimum(0);
-		// spinner.setMaximum(1000);
-		// spinner.setSelection(500);
-		// spinner.setIncrement(1);
-		// spinner.setPageIncrement(100);
-		// GridData gridData = new GridData(SWT.FILL, SWT.FILL, true, false);
-		// gridData.widthHint = SWT.DEFAULT;
-		// gridData.heightHint = SWT.DEFAULT;
-		// gridData.horizontalSpan = 2;
-		// spinner.setLayoutData(gridData);
-		//
-		// Composite composite = new Composite(shell, SWT.BORDER);
-		// gridData = new GridData(SWT.FILL, SWT.FILL, true, false);
-		// gridData.horizontalSpan = 2;
-		// composite.setLayoutData(gridData);
-		// composite.setLayout(new GridLayout(1, false));
-		//
-		// Text txtTest = new Text(composite, SWT.NONE);
-		// txtTest.setText("Testing");
-		// gridData = new GridData(SWT.FILL, SWT.FILL, true, false);
-		// txtTest.setLayoutData(gridData);
-		//
-		// Text txtMoreTests = new Text(composite, SWT.NONE);
-		// txtMoreTests.setText("Another test");
-		//
-		// Group group = new Group(shell, SWT.NONE);
-		// group.setText("This is my group");
-		// gridData = new GridData(SWT.FILL, SWT.FILL, true, false);
-		// gridData.horizontalSpan = 2;
-		// group.setLayoutData(gridData);
-		// group.setLayout(new RowLayout(SWT.VERTICAL));
-		// Text txtAnotherTest = new Text(group, SWT.NONE);
-		// txtAnotherTest.setText("Another test");
-
+	private void centerShell() {
+		shell.pack();
+		shell.setMinimumSize(shell.getSize());
 		
+		Rectangle bounds = primaryMonitor.getBounds();
+		Rectangle rect = shell.getBounds();
+		
+		int x = bounds.x + (bounds.width - rect.width) / 2;
+		int y = bounds.y + (bounds.height - rect.height) / 2;
+		
+		shell.setLocation(x, y);
 	}
 
-	
+	private void showLoadingShell() {
+		dialogShell = new Shell(shell, SWT.RESIZE | SWT.ON_TOP);
+		dialogShell.setLayout(new GridLayout(1, false));
+		dialogShell.setSize(280, 110);
+
+		Label loadingLabel = new Label(dialogShell, SWT.NONE);
+		loadingLabel.setText("\n\tLoading...");
+
+		FontData[] fontData = loadingLabel.getFont().getFontData();
+		fontData[0].setHeight(16);
+		loadingLabel.setFont(new Font(display, fontData[0]));
+
+		int x = shell.getLocation().x - dialogShell.getSize().x / 2 + shell.getSize().x / 2;
+		int y = shell.getLocation().y - dialogShell.getSize().y / 2 + shell.getSize().y / 2;
+
+		dialogShell.setLocation(new Point(x, y));
+	}
+
+	private void openShell() {
+		dialogShell.open();
+		shell.open();
+		dialogShell.dispose();
+	}
+
+	public static void main(String[] args) {
+		GameOfLife gol = new GameOfLife(new Coordinate(40, 60));
+		gol.start();
+	}
 
 }
