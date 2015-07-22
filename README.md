@@ -1,2 +1,2 @@
 # GOL
-Game of life (Swing)
+Game of life (SWT)
