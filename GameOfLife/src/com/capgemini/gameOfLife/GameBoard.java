@@ -16,7 +16,7 @@ public class GameBoard {
 
 	/**
 	 * Creates all cells to fill the GameBoard by default initializing them to
-	 * be dead.
+	 * be DEAD.
 	 */
 	protected void initCells() {
 		for (int i = 0; i < DIMENSIONS.getX(); ++i) {
@@ -28,7 +28,7 @@ public class GameBoard {
 	}
 
 	/**
-	 * @return Number of alive <b>cell</b>'s neighbors.
+	 * @return Number of ALIVE <b>cell</b>'s neighbors.
 	 */
 	protected int countNeighborsAlive(Cell cell) {
 		int alive = 0;
@@ -56,6 +56,7 @@ public class GameBoard {
 	}
 
 	/**
+	 * Sets new <b>state</b> to Cell at given <b>position</b>.
 	 * @param position
 	 *            target Cell position on GameBoard
 	 * @param state
@@ -66,15 +67,10 @@ public class GameBoard {
 	 *            immediately.
 	 */
 	public void setCellState(Coordinate position, CellState state, boolean inNextGeneration) {
-		Cell cell = getCell(position);
-		if (cell.getState().equals(state)) {
-			return;
-		}
-		cell.setNextState(state);
+		Cell cell = getCell(position).setNextState(state);
 		if (!inNextGeneration) {
 			cell.nextGeneration();
 		}
-		cellMap.put(position, cell);
 	}
 
 	/**
@@ -82,11 +78,11 @@ public class GameBoard {
 	 */
 	public void nextGeneration() {
 		for (Map.Entry<Coordinate, Cell> entry : cellMap.entrySet()) {
-			determineStateInNextGeneration(entry.getValue());
+			determineStateInNextGeneration(entry);//.getValue());
 		}
 
 		for (Map.Entry<Coordinate, Cell> entry : cellMap.entrySet()) {
-			setCellState(entry.getKey(), entry.getValue().getNextState(), false);
+			entry.getValue().nextGeneration();
 		}
 	}
 
@@ -101,13 +97,14 @@ public class GameBoard {
 	 * 
 	 * @param cell
 	 */
-	protected void determineStateInNextGeneration(Cell cell) {
-		Coordinate coord = cell.getPosition();
+	protected void determineStateInNextGeneration(Map.Entry<Coordinate, Cell> entry) {
+		Coordinate coord = entry.getKey();
+		Cell cell = entry.getValue();
 		int alive = countNeighborsAlive(cell);
 
 		if (cell.isAlive() && (alive < 2 || alive > 3)) {
 			setCellState(coord, CellState.DEAD, true);
-		} else if (!cell.isAlive() && alive == 3) {
+		} else if (alive == 3) {
 			setCellState(coord, CellState.ALIVE, true);
 		}
 	}

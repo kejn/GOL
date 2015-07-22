@@ -9,12 +9,12 @@ public class Coordinate {
 	private static Coordinate upperLimit = null;
 
 	/**
-	 * Horizontal position.
+	 * Row.
 	 */
 	protected Integer x;
 
 	/**
-	 * Vertical position.
+	 * Column.
 	 */
 	protected Integer y;
 
@@ -29,14 +29,14 @@ public class Coordinate {
 	}
 
 	/**
-	 * @return Horizontal position.
+	 * @return Row.
 	 */
 	public Integer getX() {
 		return x;
 	}
 
 	/**
-	 * @return Vertical position.
+	 * @return Column.
 	 */
 	public Integer getY() {
 		return y;
@@ -44,8 +44,6 @@ public class Coordinate {
 
 	/**
 	 * Assigns <b>this</b> position <b>another</b> position.
-	 * 
-	 * @param another
 	 */
 	public static void setUpperLimit(Coordinate another) {
 		upperLimit = new Coordinate(another);
@@ -58,28 +56,31 @@ public class Coordinate {
 	}
 
 	/**
-	 * @return Coordinate shifted by <b>shiftX</b> horizontally and by
-	 *         <b>shiftY</b> vertically.
+	 * @return Coordinate shifted by <b>shiftX</b> rows and by <b>shiftY</b>
+	 *         columns.
 	 */
 	public Coordinate newShifted(Integer shiftX, Integer shiftY) {
 		return new Coordinate(x + shiftX, y + shiftY);
 	}
 
 	/**
-	 * @return true if both {@link #x} and {@link #y} are positive values
+	 * @return <b>this</b> if both {@link #x} and {@link #y} are positive values
 	 *         smaller than specified by {@link #upperLimit}.
 	 * @throws Exception
 	 *             if upper limit was not initialized (e.g. in GameBoard
 	 *             constructor).
+	 * @throws NullPointerException
+	 *             if <b>this</b> {@link #isNegative()} or
+	 *             {@link #hasEqualXOrY(Coordinate)} to {@link #upperLimit}.
 	 */
-	public boolean isValidToLimits() throws Exception {
+	public Coordinate validateToLimits() throws Exception, NullPointerException {
 		if (Coordinate.upperLimit == null) {
 			throw new Exception("Upper limit was not initialised.");
 		}
 		if (isNegative() || hasEqualXOrY(Coordinate.upperLimit)) {
-			return false;
+			throw new NullPointerException("Invalid to limits.");
 		}
-		return true;
+		return this;
 	}
 
 	public boolean isNegative() {
@@ -91,7 +92,7 @@ public class Coordinate {
 
 	/**
 	 * @return true if this Coordinate is in the same row or column that another
-	 *         is.
+	 *         Coordinate is.
 	 */
 	public boolean hasEqualXOrY(Coordinate another) {
 		if (x == another.getX() || y == another.getY()) {
